@@ -1,0 +1,101 @@
+Overview
+This script allows you to interact with a Hugging Face AI model through a simple command-line interface. It ensures the script has execution permissions, prompts the user for a Hugging Face API token if not already set, and uses the token to chat with the specified AI model.
+
+Prerequisites
+Ensure curl and jq are installed on your system.
+Obtain a Hugging Face API Token from Hugging Face.
+Installing jq on Linux
+To install jq on a Linux system, you can use the following command:
+
+
+sudo apt-get install jq
+Usage
+Ensure Execution Permissions:
+The first time you run the script, use:
+
+
+bash chat_hf.sh
+Subsequent runs can be done with:
+
+
+./chat_hf.sh
+Hugging Face API Token:
+If the HF_TOKEN environment variable is not set, the script will prompt you to enter your Hugging Face API Token.
+
+Chat with the AI Model:
+The script uses the specified model (e.g., mistralai/Mistral-Nemo-Instruct-2407) to interact with the Hugging Face AI. You can type your messages, and the AI will respond. Type exit to end the conversation.
+
+Script Details
+Checking Execution Permissions
+The script checks if it has execution permissions and grants them if necessary:
+
+
+if [ ! -x "$0" ]; then
+    echo "Granting execution permissions to the script..."
+    chmod +x "$0"
+    echo "Permissions granted. You can now run the script with ./chat_hf.sh"
+    echo "Exiting so you can re-run the script."
+    exit 0
+fi
+Prompting for API Token
+If the HF_TOKEN is not set, the script prompts the user to enter it:
+
+
+if [ -z "$HF_TOKEN" ]; then
+    read -p "Please enter your Hugging Face API Token: " USER_TOKEN
+    export HF_TOKEN="$USER_TOKEN"
+fi
+Verifying API Token
+The script verifies that the HF_TOKEN is set:
+
+
+if [ -z "$HF_TOKEN" ]; then
+    echo "Error: No token provided. Exiting..."
+    exit 1
+fi
+Model and API URL
+The script sets the model to use and the API URL:
+
+
+MODEL="mistralai/Mistral-Nemo-Instruct-2407"
+API_URL="https://api-inference.huggingface.co/models/${MODEL}"
+Chat Loop
+The script enters a loop where it reads user input, sends it to the AI model, and prints the AI's response:
+
+
+while true; do
+    read -p "You: " USER_PROMPT
+
+    if [ "$USER_PROMPT" = "exit" ]; then
+        echo "Ending the conversation..."
+        break
+    fi
+
+    JSON_PAYLOAD=$(cat <<EOF
+{
+    "inputs": "$USER_PROMPT",
+    "parameters": {
+        "max_new_tokens": 500
+    }
+}
+EOF
+)
+
+    RESPONSE=$(curl -s -X POST "$API_URL" \
+        -H "Authorization: Bearer $HF_TOKEN" \
+        -H "Content-Type: application/json" \
+        --data "$JSON_PAYLOAD")
+
+    RESPONSE_TEXT=$(echo "$RESPONSE" | jq -r '.[0].generated_text')
+
+    if [ -z "$RESPONSE_TEXT" ] || [ "$RESPONSE_TEXT" = "null" ]; then
+        echo "AI: [No valid response obtained. Please try again.]"
+    else
+        echo "AI: $RESPONSE_TEXT"
+    fi
+done
+License
+This script is licensed under the MIT License. See the LICENSE file for more details.
+
+Author
+Northem Group LLC
